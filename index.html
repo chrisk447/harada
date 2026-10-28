@@ -1,0 +1,582 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Husband Harada Chart</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Harada">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: Harada 3x3 of cards (goal in centre, 8 pillars around, 8 actions each) + three working tabs (Today, Week, Rhythm). */
+:root{
+  --bg:#F4F5F7; --surface:#FFFFFF; --ink:#1C2230; --muted:#5D6678; --line:#DDE1E8;
+  --accent:#8B3558; --accent-soft:#F3E3EA; --on-accent:#FFFFFF;
+  --good:#2F7D59; --warn:#B26A00; --bad:#B3382F;
+  --display:"Instrument Serif",Georgia,"Times New Roman",serif;
+  --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151B; --surface:#1A1E26; --ink:#E8EAEF; --muted:#9AA3B5; --line:#2B313D;
+  --accent:#E58BAA; --accent-soft:#3A2430; --on-accent:#1A1015;
+  --good:#5CC28F; --warn:#E3A645; --bad:#F0827A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151B; --surface:#1A1E26; --ink:#E8EAEF; --muted:#9AA3B5; --line:#2B313D;
+  --accent:#E58BAA; --accent-soft:#3A2430; --on-accent:#1A1015;
+  --good:#5CC28F; --warn:#E3A645; --bad:#F0827A; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,5vw,44px);line-height:1.05;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:4px 0 0;max-width:60ch}
+#sync{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 10px;background:var(--surface)}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+nav button{font:inherit;font-weight:600;background:none;border:0;color:var(--muted);padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section[hidden]{display:none}
+h2{font-family:var(--display);font-weight:400;font-size:28px;margin:0 0 4px}
+h3{font-size:13px;letter-spacing:.07em;text-transform:uppercase;margin:0;color:var(--accent)}
+
+/* chart */
+.chart{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.chart{grid-template-columns:repeat(3,1fr)}.goal{grid-column:2;grid-row:2}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.goal{background:var(--accent);color:var(--on-accent);border-color:var(--accent);justify-content:center}
+.goal h3{color:inherit;opacity:.85}
+.goal p{font-family:var(--display);font-size:24px;line-height:1.2;margin:0}
+.goal ul{margin:0;padding-left:18px;font-size:13.5px}
+.acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;counter-reset:a}
+.acts li{display:grid;grid-template-columns:20px 1fr;gap:6px;font-size:14px}
+.acts li::before{counter-increment:a;content:counter(a);color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;padding-top:2px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--line);color:var(--muted);border-radius:3px;padding:0 5px;margin-left:6px;white-space:nowrap;vertical-align:1px}
+.tag.D{color:var(--accent);border-color:var(--accent)}
+.legend{color:var(--muted);font-size:13px;margin:0}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.grid2{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:800px){.grid2{grid-template-columns:3fr 2fr}}
+.rule{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 12px;margin:0;border-radius:0 4px 4px 0}
+.chk{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}
+.chk:first-of-type{border-top:0}
+.chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+.chk small{display:block;color:var(--muted);font-size:12px}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);width:0}
+.stat{display:flex;gap:20px;flex-wrap:wrap;align-items:baseline}
+.stat b{font-family:var(--display);font-weight:400;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:13px;display:block}
+.opts{display:flex;flex-wrap:wrap;gap:6px}.opts button{font:inherit;font-weight:600;padding:8px 12px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}.opts button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.later{margin-top:12px}
+.cc{border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.cc p{margin:0}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-right:6px}
+.crow{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+.cbtn,.cdo{font:inherit;font-weight:600;background:var(--accent);color:var(--on-accent);border:0;border-radius:4px;padding:8px 16px;cursor:pointer}
+.cdo{padding:5px 12px;font-size:13px}
+.cgh{font:inherit;font-weight:500;font-size:13px;background:none;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer}
+input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;width:100px}
+.trow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}.trow:first-child{border-top:0}.week7{display:flex;gap:6px}
+.week7 div{flex:1;text-align:center;font-size:11px;color:var(--muted)}
+.week7 i{display:block;height:34px;border-radius:3px;background:var(--line);margin-bottom:3px;position:relative;overflow:hidden}
+.week7 i b{position:absolute;left:0;right:0;bottom:0;background:var(--accent)}
+textarea,input[type=text],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;width:100%}
+textarea{min-height:64px;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:13px}
+.score{display:flex;flex-wrap:wrap;gap:4px}
+.score button{font:inherit;font-weight:600;width:38px;height:38px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.score button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.prom{display:grid;grid-template-columns:1fr 110px;gap:8px}
+.wk{display:flex;align-items:center;gap:8px}
+.wk button{font:inherit;font-weight:600;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:4px;padding:6px 12px;cursor:pointer}
+.wk strong{flex:1;text-align:center;font-variant-numeric:tabular-nums}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td.n{font-variant-numeric:tabular-nums}
+.kept{color:var(--good);font-weight:600}.miss{color:var(--bad);font-weight:600}
+ol.seq{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+blockquote{margin:0;font-family:var(--display);font-size:20px;line-height:1.3;color:var(--ink)}
+.empty{color:var(--muted);font-size:14px;margin:0}
+@media(prefers-reduced-motion:no-preference){.bar>i{transition:width .25s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Husband Harada Chart</h1>
+      <p class="sub">One goal, eight pillars, sixty-four actions. Built for a work-from-home marriage with a young daughter. It starts with repair, not romance.</p>
+    </div>
+    <span id="sync">Loading…</span>
+  </header>
+  <div class="panel" id="auth" hidden>
+    <h2>Sign in</h2>
+    <p class="empty">Enter your email and we'll send a sign-in link. Open it on this device.</p>
+    <input type="text" id="aEmail" inputmode="email" autocomplete="email" placeholder="you@example.com">
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="cbtn" id="aSend">Send link</button></div>
+    <p class="empty" id="aMsg"></p>
+  </div>
+  <nav role="tablist" aria-label="Sections">
+    <button role="tab" id="t-chart" aria-selected="true" data-tab="chart">Chart</button>
+    <button role="tab" id="t-today" aria-selected="false" data-tab="today">Today</button>
+    <button role="tab" id="t-commits" aria-selected="false" data-tab="commits">Commitments</button>
+    <button role="tab" id="t-week" aria-selected="false" data-tab="week">Week</button>
+    <button role="tab" id="t-rhythm" aria-selected="false" data-tab="rhythm">Rhythm</button>
+  </nav>
+
+  <section id="chart"><div id="chartGrid" class="chart"></div>
+    <div class="panel later"><h2>Later: courtship</h2>
+      <p class="empty">Hold these until she signals she's open: she starts affection, plans something with you, or tells you. Start with a date night.</p>
+      <ol class="acts">
+        <li><span>Plan and book a Friday date night and the sitter<span class="tag">Weekly</span></span></li>
+        <li><span>Send a playful or specific appreciation text<span class="tag">Weekly</span></span></li>
+        <li><span>A small gesture she'd notice: her coffee, a snack, flowers, a song<span class="tag">Weekly</span></span></li>
+        <li><span>A bigger gesture: half-day or overnight, childcare arranged<span class="tag">Monthly</span></span></li>
+        <li><span>List ten things from early dating and do one a month<span class="tag">Monthly</span></span></li>
+        <li><span>Ask what "romantic" means to her, and write the answers down<span class="tag">Once</span></span></li>
+        <li><span>Ask what makes her feel loved and desired, then do more of it<span class="tag">Monthly</span></span></li>
+        <li><span>On dates, ask one curious question about her and just listen<span class="tag">Weekly</span></span></li></ol></div>
+    <p class="legend" style="margin-top:12px">Cadence tags: <span class="tag D">Daily</span> <span class="tag">Weekly</span> <span class="tag">Monthly</span> <span class="tag">Once</span> <span class="tag">As needed</span>. Daily actions appear on the Today tab; weekly ones on the Week tab.</p>
+  </section>
+
+  <section id="today" hidden>
+    <div class="grid2">
+      <div class="panel">
+        <div><h2 id="todayTitle">Today</h2><p class="rule"><b>Do first, announce after.</b> Don't tell her what you will do today. Do it, then let the record and her experience speak.</p></div>
+        <div id="todayList"></div>
+        <div><h3>Commitments today</h3><div id="todayCommits" style="margin-top:6px"></div></div>
+        <div><h3>Today's tension</h3><div class="opts" id="tension" style="margin-top:8px"></div></div>
+        <label class="f" for="note">Evening log: what I kept, what I missed, any moment I escalated, one change for tomorrow
+          <textarea id="note"></textarea></label>
+      </div>
+      <div class="panel">
+        <div class="stat"><div><b id="dCount">0/11</b><span>done today</span></div><div><b id="streak">0</b><span id="streakLbl">day streak</span></div></div>
+        <div class="bar"><i id="dBar"></i></div>
+        <div><h3>Last 7 days</h3><div class="week7" id="week7" style="margin-top:8px"></div></div>
+        <p class="empty">A day counts toward the streak at about 80% done. A missed day isn't a reset. Notice what got in the way and fix that first.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="commits" hidden>
+    <div class="grid2">
+      <div class="panel">
+        <div><h2>Commitments</h2><p class="rule">A promise only counts once it's a behavior someone could watch, with a trigger and a weekly minimum. Three active at most.</p></div>
+        <div id="cList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div id="cFormWrap" style="display:flex;flex-direction:column;gap:8px">
+          <h3>Add a commitment</h3>
+          <label class="f" for="cPromise">The promise, as I said it<input type="text" id="cPromise" placeholder="e.g. I'll ask for your help more"></label>
+          <label class="f" for="cBeh">What a camera would see<input type="text" id="cBeh" placeholder="e.g. Ask her for one specific thing, with a time"></label>
+          <label class="f" for="cTrig">When it triggers<input type="text" id="cTrig" placeholder="e.g. Whenever I'm about to push through alone"></label>
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+            <label class="f" for="cFloor">Weekly minimum<input type="number" id="cFloor" min="1" max="14" value="3"></label>
+            <button class="cbtn" id="cAdd">Add</button>
+          </div>
+          <p class="empty" id="cMsg"></p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="stat"><div><b id="cActive">0/3</b><span>active</span></div><div><b id="cMet">0/0</b><span>minimums met this week</span></div></div>
+        <p class="empty">The minimum is what you'll hit every week, even bad ones. It's better to hit a low number every week than miss a high one. The streak counts weeks in a row at or above the minimum.</p>
+        <p class="empty">Log right after you do it, from Today or here. Don't tell her ahead of time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="week" hidden>
+    <div class="panel" style="gap:16px">
+      <div class="wk"><button id="prevW" aria-label="Previous week">←</button><strong id="weekLabel"></strong><button id="nextW" aria-label="Next week">→</button></div>
+      <div class="grid2">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div><h3>Promises this week (max 3)</h3><p class="empty" style="margin-bottom:8px">Written down, with a day. Grade yourself honestly. Let her grade them only if she asks to.</p>
+            <div id="proms" style="display:flex;flex-direction:column;gap:8px"></div></div>
+          <div><h3>Non-negotiables</h3><div id="nn"></div></div>
+          <div><h3>Menu: weekly actions from the chart</h3><div id="wmenu"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div><h3>Calm score</h3><p class="empty" style="margin-bottom:8px">0 (tense) to 10 (calm). Your honest read of how safe and calm home felt this week, or her number if she offers it.</p><div class="score" id="her"></div></div>
+          <label class="f" for="helped">One thing she said she liked or needed<textarea id="helped"></textarea></label>
+          <label class="f" for="hurt">One thing she said felt missing<textarea id="hurt"></textarea></label>
+          <label class="f" for="change">One change I'm making next week<textarea id="change"></textarea></label>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:12px"><h3>History</h3><div class="tw" id="hist"></div></div>
+  </section>
+
+  <section id="rhythm" hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="panel"><h2>First 48 hours</h2>
+        <p class="empty">Delivery starts by making each promise something you can watch yourself do. Do these in order.</p>
+        <ol class="seq">
+          <li>Write down every promise in her words, the way you said them to her.</li>
+          <li>For each, write what a camera would see, when it triggers, and a weekly minimum you'll hit even on bad weeks.</li>
+          <li>Pick the three that matter most to her. The rest wait, each with a date to revisit.</li>
+          <li>Put them on the Commitments tab.</li>
+          <li>At the next trigger, do the behavior, log it right after, and say nothing.</li></ol></div>
+
+      <div class="panel"><h2>Stage 1: Stabilize</h2>
+        <p class="empty">Weeks 1 to 4. The job is to lower the temperature: fewer blow-ups, faster repairs, a steady presence. No big gestures and no asking for anything back.</p>
+        <div class="tw"><table>
+          <thead><tr><th>Moment</th><th>When</th><th>What happens</th><th>Rule</th></tr></thead>
+          <tbody>
+            <tr><td><b>Commitment behaviors</b></td><td class="n">At their triggers</td><td>Do each active behavior when its trigger shows up, then log it on Today.</td><td>Don't announce. If she asks, describe what you actually did.</td></tr>
+            <tr><td><b>Pickup and dinner</b></td><td class="n">5 to 8:30 pm</td><td>You pick up your daughter together and eat dinner together. Phones away, even tone. Heat, plate and clean up only as agreed.</td><td>No work talk, no logistics, no scorekeeping.</td></tr>
+            <tr><td><b>Daily question</b></td><td class="n">Around dinner</td><td>Ask how her day was. Accept any answer.</td><td>"Fine" is a complete answer. Don't push.</td></tr>
+            <tr><td><b>After a tense moment</b></td><td class="n">Within 24 hours</td><td>Check in: "Are we okay?" Apologize for your part.</td><td>No "but." Don't ask her to apologize back.</td></tr>
+            <tr><td><b>Late check-in</b></td><td class="n">When she finishes work</td><td>Offer tea, a snack, or just goodnight.</td><td>Optional. If she's spent, goodnight is enough.</td></tr>
+            <tr><td><b>My log</b></td><td class="n">After bedtime, about 8:30 pm</td><td>Tick Today, rate the day's tension, write the note.</td><td>Do it on bad days too. That is the habit.</td></tr>
+          </tbody></table></div></div>
+
+      <div class="panel"><h2>When tension spikes</h2>
+        <p class="empty">The order matters. Most of the damage happens in steps one and two.</p>
+        <ol class="seq">
+          <li>Breathe and wait three seconds. Don't defend, explain or counter.</li>
+          <li>If you're flooded, say "I need 20 minutes, I'll be back at 8:15." Go to another room, calm down, and come back on time.</li>
+          <li>When you return, reflect before you respond: "What I'm hearing is…" Keep going until she says that's right.</li>
+          <li>Apologize for your part. Say what you did and how it landed. No "but."</li>
+          <li>Within 24 hours, check in: "Are we okay?" Accept the answer she gives.</li>
+          <li>Log it that night: what set you off, what you did, what you'll do next time.</li></ol>
+        <p class="rule">If an argument starts around your daughter, say "Let's pick this up later" and take it elsewhere.</p></div>
+
+      <div class="panel"><h2>Sunday, alone</h2>
+        <p class="empty">Five minutes by yourself. No one else is involved.</p>
+        <ul class="plain">
+          <li>Open the Commitments tab: which minimums did you hit, which did you miss, and what got in the way? Adjust the trigger, not the promise.</li>
+          <li>Go through your promises: kept, missed, still open. If she would call it missed, it's missed.</li>
+          <li>Look back at the week's tension ratings and find the pattern: time of day, trigger, what you did.</li>
+          <li>Open the shared calendar and pick two or three tasks to offer her. Let her choose.</li>
+          <li>Write one change for the coming week on the Week tab.</li></ul></div>
+
+      <div class="panel"><h2>Ask, offer, let her decide</h2>
+        <p class="empty">Taking over without asking still decides for her, even when it's meant as help.</p>
+        <ul class="plain">
+          <li><b>Ask first, with two options.</b> "Chicken from the batch or the pasta?" is easy to answer. "What do you want for dinner?" gives her another decision.</li>
+          <li><b>Offer a choice.</b> "Do you want me to take this, or do it together?"</li>
+          <li><b>Do it her way.</b> Don't redo it or tweak it. Ask before changing anything.</li>
+          <li><b>Hear "I've got it" as information.</b> Say "Okay, tell me if that changes."</li>
+          <li><b>Agree on lists once.</b> "What do you want to hand me, and what do you want to keep?" A yes becomes standing until something changes.</li></ul></div>
+
+      <div class="panel"><h2>Stage 2: Rebuild trust</h2>
+        <p class="empty">Weeks 5 to 8, once tense moments are getting repaired within a day.</p>
+        <ul class="plain">
+          <li>Keep your promise record clean for four weeks running: three open at most, each with a day.</li>
+          <li>Ask once a month: "Is there anything I said I'd do and haven't?" Then do it that week.</li>
+          <li>Offer the apology you wrote, once, when she seems open to hearing it.</li>
+          <li>Offer couples counseling once, with no pressure, and follow her lead. Book your own therapy now regardless.</li></ul></div>
+
+      <div class="panel"><h2>Stage 3: Reconnect</h2>
+        <p class="empty">Her call, not yours. Signs she's ready: she starts affection, plans something with you, or tells you. Then open the "Later: courtship" list on the Chart tab and start with a date night.</p></div>
+
+      <div class="panel"><h2>Rules against empty promises</h2>
+        <ul class="plain">
+          <li><b>Report, don't promise.</b> Do the thing, then tell her you did it.</li>
+          <li><b>Never say yes on the spot.</b> Say "Let me check my calendar and tell you by 3."</li>
+          <li><b>A promise is something you tell her you will do, with a day.</b> The chart's daily habits are not promises.</li>
+          <li><b>Three open promises at most.</b> Each has a day, written on your private list.</li>
+          <li><b>If you'll miss, say so before the deadline</b> and give a new day. A silent miss is the one that costs trust.</li>
+          <li><b>Count honestly.</b> You're the scorekeeper for now, so grade yourself the way she would.</li>
+          <li><b>Give it twelve weeks.</b> Don't ask her to believe it. Let her watch.</li></ul></div>
+
+      <div class="panel"><h2>Opening the conversation</h2><p class="empty">Keep it short and ask for nothing. Something like:</p>
+        <blockquote>"I know things have been hard, and I know I've made them harder. I'm not asking for anything right now. I'm getting help, and I'm working on being steadier. If there's one thing you need from me, I'd like to hear it whenever you're ready."</blockquote></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+var GOAL={
+  text:"In twelve weeks, home feels calmer: tense moments get repaired within a day, my wife can rely on what I say, and she's open to being close again.",
+  measures:["Every tense moment repaired within 24 hours","90% of my promises kept, graded honestly","She chooses time together at least once a week, on her terms"]};
+var CAD={D:"Daily",W:"Weekly",M:"Monthly",O:"Once",N:"As needed"};
+var P=[
+{n:"Turn promises into behavior",a:[
+ ["List every promise I've made in her words, exactly as I said them (\"I'll ask for your help more,\" \"I'll advocate for you with our daughter\")","O"],
+ ["For each one, write what a camera would see: the specific behavior, when it triggers, and a weekly minimum","O"],
+ ["Pick the three that matter most to her and deliver those first. The rest wait, each with a date to revisit","O"],
+ ["Do each active behavior when its trigger appears, and log it right after on the Commitments tab","D"],
+ ["Set the weekly minimum low enough to hit every week. Raise it only after four weeks in a row","W"],
+ ["When the trigger shows up, do the behavior first and think about it after: \"If X happens, I do Y\"","N"],
+ ["Don't announce intentions. If she asks, describe what I actually did this week","N"],
+ ["Review the log monthly, alone: where I hit the minimum, where I missed, what got in the way. Change the trigger, not the promise","M"]]},
+{n:"Make amends in action",a:[
+ ["For each pattern I've had (promises, taking over, distance), write the concrete thing I'll do instead and the cue that triggers it","O"],
+ ["Offer one specific apology for the pattern, with what I'm already doing about it, no excuses and no ask in return","O"],
+ ["Apologize within 24 hours when I get it wrong: what I did, how it landed, what I'll change. No \"but\"","N"],
+ ["When things are calm, ask once a week: \"Is something I'm doing making this harder?\" Listen, say thank you, don't explain","W"],
+ ["Pick one thing she's told me she needs more than once, a behavior and not a chore, and deliver it this week","W"],
+ ["Don't ask her to forgive, reassure or hurry. Let her set the pace","N"],
+ ["Take one visible step and tell her after: \"I booked therapy.\" Nothing more","O"],
+ ["Review monthly: which promises or patterns repeated? Change one thing","M"]]},
+{n:"Listen to understand",a:[
+ ["Ask how her day was and accept whatever she gives, even \"fine\"","D"],
+ ["Reflect back before responding: \"What I'm hearing is…\"","N"],
+ ["Ask \"Solutions or support?\" before giving advice","N"],
+ ["When she's upset, validate first: \"That makes sense\" or \"That sounds exhausting\"","N"],
+ ["Thank her for one specific thing, plainly and with no follow-up ask","W"],
+ ["Ask what has been heaviest for her this week and just listen","W"],
+ ["Read 30 minutes a week on repair and marriage (Hold Me Tight, Seven Principles)","W"],
+ ["Ask what she needs from me right now, then repeat it back to check","M"]]},
+{n:"Communication & repair",a:[
+ ["Start softly: \"When X happened, I felt Y, I need Z.\" No \"always\" or \"never\"","N"],
+ ["Make repair attempts and accept hers: humor, a touch, \"Can we start over?\"","N"],
+ ["Say what I need directly and kindly, no hinting","N"],
+ ["Pick the moment and keep to one issue: \"Is now okay, or is later better?\" Skip it while she's working or our daughter is up","N"],
+ ["Pause rule: \"I need 20 minutes, I'll be back at 8:15,\" and come back on time. Agree a phrase with her for it","N"],
+ ["Share one sentence about my day or how I'm feeling, no response needed","D"],
+ ["After a tense moment, check in within a day: \"Are we okay?\" and accept her answer","N"],
+ ["No defending, explaining or \"but\" for the first two minutes of her upset","N"]]},
+{n:"Ask, offer, receive",a:[
+ ["Ask before taking over. Offer two options: \"Chicken from the batch or the pasta?\"","N"],
+ ["When I feel the urge to take over, pause and ask: \"Help, or want me to stay out of it?\"","N"],
+ ["Do tasks her way. Don't redo or critique them, and say thank you","N"],
+ ["Ask for her help or input at least four days a week: small, specific, with a time. Accept \"not now\"","W"],
+ ["Agree once on what she wants to hand me and what she wants to keep","O"],
+ ["Hear \"I've got it\" as information: \"Okay, tell me if that changes\"","N"],
+ ["Book individual therapy or coaching for me","O"],
+ ["Offer couples counseling once, no pressure, and follow her lead","O"]]},
+{n:"Trust system",a:[
+ ["Keep at most three open promises on a private list, each with a day","W"],
+ ["Never say yes on the spot: \"Let me check and tell you by 3\"","N"],
+ ["Finish small asks within 24 hours","N"],
+ ["Complete my evening log after bedtime: kept, missed, escalated, one change. Do it on bad days too","D"],
+ ["If I'll miss a promise, renegotiate before the deadline","N"],
+ ["Review my own kept-versus-missed record alone each Sunday","W"],
+ ["Ask monthly: \"Is there anything I said I'd do and haven't?\" Then do it","M"],
+ ["For each new promise, name what could stop me and plan around it","N"]]},
+{n:"Steady presence at home",a:[
+ ["Be the calm at pickup and dinner: phones away, even tone, no work talk","D"],
+ ["Notice one household task and ask \"Want me to take this?\" before doing it","D"],
+ ["Agree with her which meal tasks are mine (heat, plate, clean up) and ask before changing anything","W"],
+ ["Give her a three-hour solo block on the weekend, no check-in texts","W"],
+ ["Sunday: check the shared calendar, offer her two or three tasks I could take, and let her pick","W"],
+ ["Say one thing I admire about her mom to our daughter, out loud, at least four days a week","W"],
+ ["Offer one low-pressure time together a week (a walk, coffee, a Friday show) and accept a no gracefully","W"],
+ ["Back her up in front of our daughter: support her call in the moment, disagree with her privately later","N"]]},
+{n:"Me: regulating & support",a:[
+ ["Go to my therapy or coaching sessions and act on one thing from each","W"],
+ ["When stressed or irritated, name the feeling (\"I feel ___\"), then breathe or walk five minutes before engaging","N"],
+ ["If she's distant or short with me, stay steady. Don't chase, punish or take it personally","N"],
+ ["Exercise three times a week","W"],
+ ["Talk honestly with a friend or men's group about my part, not to vent about her","M"],
+ ["Write a letter: the husband I want to be and why. Reread it monthly","O"],
+ ["Monthly reflection: what's working, what to cut","M"],
+ ["Keep a note of things she mentions liking or wanting, for when we reconnect","N"]]}
+];
+// stable ids
+var ACTS=[];P.forEach(function(p,pi){p.a.forEach(function(x,ai){ACTS.push({id:"p"+(pi+1)+"a"+(ai+1),t:x[0],c:x[1],p:pi,pn:p.n});});});
+var DAILY=ACTS.filter(function(a){return a.c==="D";});
+var WEEKLY=ACTS.filter(function(a){return a.c==="W";});
+var STREAK_MIN=Math.ceil(DAILY.length*0.8);
+
+/* ---------- helpers ---------- */
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function iso(d){var m=d.getMonth()+1,dd=d.getDate();return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(dd<10?"0":"")+dd;}
+function parse(s){var a=s.split("-");return new Date(+a[0],+a[1]-1,+a[2]);}
+function addDays(d,n){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);return x;}
+function monday(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());var w=(x.getDay()+6)%7;return addDays(x,-w);}
+function fmt(d,o){return d.toLocaleDateString(undefined,o);}
+
+/* ---------- state + persistence ---------- */
+var S={days:{},weeks:{}};
+var today=iso(new Date());
+var weekKey=iso(monday(new Date()));
+var mode="local",saveTimer=null,dbRef=null;
+function setSync(t){$("sync").textContent=t;}
+function lsGet(){try{var v=localStorage.getItem("husband-harada");return v?JSON.parse(v):null;}catch(e){return null;}}
+function lsSet(){try{localStorage.setItem("husband-harada",JSON.stringify(S));}catch(e){}}
+function findJson(o,depth){
+  if(!o||depth>3)return null;
+  if(typeof o==="function")return null;
+  if(typeof o.json==="string")return o.json;
+  var d=o.data;if(typeof d==="function"){try{d=d.call(o);}catch(e){d=null;}}
+  return d?findJson(d,depth+1):null;
+}
+function save(){
+  lsSet();setSync(mode==="db"?"Saving…":"Saved on this device only");
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(function(){
+    if(mode!=="db"||!dbRef){return;}
+    Promise.resolve(dbRef.set({json:JSON.stringify(S)})).then(function(){setSync("Saved");}).catch(function(){mode="local";setSync("Saved on this device only");});
+  },600);
+}
+function day(k){if(!S.days[k])S.days[k]={c:[],note:""};return S.days[k];}
+function wk(k){if(!S.weeks[k])S.weeks[k]={p:[{t:"",s:""},{t:"",s:""},{t:"",s:""}],her:null,nn:[],w:[],helped:"",hurt:"",change:""};return S.weeks[k];}
+function has(arr,id){return arr.indexOf(id)>-1;}
+function toggle(arr,id,on){var i=arr.indexOf(id);if(on&&i<0)arr.push(id);if(!on&&i>-1)arr.splice(i,1);}
+
+/* ---------- chart ---------- */
+function renderChart(){
+  var h='<div class="card goal"><h3>The goal</h3><p>'+esc(GOAL.text)+'</p><ul>'+GOAL.measures.map(function(m){return"<li>"+esc(m)+"</li>";}).join("")+'</ul></div>';
+  P.forEach(function(p,pi){
+    h+='<div class="card"><h3>'+(pi+1)+'. '+esc(p.n)+'</h3><ol class="acts">'+
+      p.a.map(function(x){return'<li><span>'+esc(x[0])+'<span class="tag '+x[1]+'">'+CAD[x[1]]+'</span></span></li>';}).join("")+'</ol></div>';
+  });
+  $("chartGrid").innerHTML=h;
+}
+
+/* ---------- today ---------- */
+function dayCount(k){var d=S.days[k];if(!d)return 0;return DAILY.filter(function(a){return has(d.c,a.id);}).length;}
+function renderToday(){
+  var d=day(today);
+  $("todayTitle").textContent=fmt(parse(today),{weekday:"long",month:"long",day:"numeric"});
+  $("todayList").innerHTML=DAILY.map(function(a){
+    return'<label class="chk"><input type="checkbox" data-d="'+a.id+'"'+(has(d.c,a.id)?" checked":"")+'><span>'+esc(a.t)+'<small>'+esc(a.pn)+'</small></span></label>';
+  }).join("");
+  $("note").value=d.note||"";
+  renderTension();
+  updateToday();
+}
+var TEN=["Calm","Tense, repaired","Tense, not repaired"];
+function renderTension(){var d=day(today);$("tension").innerHTML=TEN.map(function(t,i){return'<button data-t="'+i+'" aria-pressed="'+(d.t===i)+'">'+t+'</button>';}).join("");}
+function updateToday(){
+  var n=dayCount(today),N=DAILY.length;
+  $("dCount").textContent=n+"/"+N;$("dBar").style.width=(100*n/N)+"%";
+  var s=0,cur=new Date();if(dayCount(iso(cur))<STREAK_MIN)cur=addDays(cur,-1);
+  while(dayCount(iso(cur))>=STREAK_MIN&&s<400){s++;cur=addDays(cur,-1);}
+  $("streak").textContent=s;$("streakLbl").textContent="day streak ("+STREAK_MIN+"+ of "+N+")";
+  var h="";for(var i=6;i>=0;i--){var dt=addDays(new Date(),-i),c=dayCount(iso(dt));
+    h+='<div><i title="'+c+' of '+N+'"><b style="height:'+(100*c/N)+'%"></b></i>'+fmt(dt,{weekday:"narrow"})+'</div>';}
+  $("week7").innerHTML=h;
+}
+
+/* ---------- week ---------- */
+var NN=[["repair","Repaired every tense moment within 24 hours"],["floors","Hit the weekly minimum on every active commitment"],["ask","Made one small, specific ask and accepted her answer"],["plan","Offered tasks and let her pick"],["review","Sunday self-review done"]];
+function renderWeek(){
+  var w=wk(weekKey),ws=parse(weekKey);
+  $("weekLabel").textContent="Week of "+fmt(ws,{month:"short",day:"numeric"})+" to "+fmt(addDays(ws,6),{month:"short",day:"numeric"});
+  $("proms").innerHTML=w.p.map(function(p,i){
+    return'<div class="prom"><input type="text" data-pt="'+i+'" placeholder="Promise and day, e.g. Fix the porch light by Thu" value="'+esc(p.t)+'" aria-label="Promise '+(i+1)+'">'+
+    '<select data-ps="'+i+'" aria-label="Status of promise '+(i+1)+'"><option value="">Open</option><option value="k"'+(p.s==="k"?" selected":"")+'>Kept</option><option value="m"'+(p.s==="m"?" selected":"")+'>Missed</option></select></div>';
+  }).join("");
+  $("nn").innerHTML=NN.map(function(x){return'<label class="chk"><input type="checkbox" data-n="'+x[0]+'"'+(has(w.nn,x[0])?" checked":"")+'><span>'+esc(x[1])+'</span></label>';}).join("");
+  $("wmenu").innerHTML=WEEKLY.map(function(a){return'<label class="chk"><input type="checkbox" data-w="'+a.id+'"'+(has(w.w,a.id)?" checked":"")+'><span>'+esc(a.t)+'<small>'+esc(a.pn)+'</small></span></label>';}).join("");
+  var sc="";for(var i=0;i<=10;i++)sc+='<button data-h="'+i+'" aria-pressed="'+(w.her===i)+'">'+i+'</button>';
+  $("her").innerHTML=sc;
+  $("helped").value=w.helped||"";$("hurt").value=w.hurt||"";$("change").value=w.change||"";
+  renderHist();
+}
+function renderHist(){
+  var keys=Object.keys(S.weeks).sort().reverse().filter(function(k){var w=S.weeks[k];return w.her!==null||w.p.some(function(p){return p.t;})||w.nn.length;});
+  if(!keys.length){$("hist").innerHTML='<p class="empty">No weeks logged yet. Your first week will show up here.</p>';return;}
+  $("hist").innerHTML='<table><thead><tr><th>Week of</th><th>Calm score</th><th>Promises kept</th><th>Repairs on time</th><th>Minimums met</th><th>Unrepaired days</th><th>Self-review</th></tr></thead><tbody>'+keys.map(function(k){
+    var w=S.weeks[k],made=w.p.filter(function(p){return p.t;}).length,kept=w.p.filter(function(p){return p.t&&p.s==="k";}).length,miss=w.p.filter(function(p){return p.t&&p.s==="m";}).length;
+    var cm=S.commits||[],cmk=cm.filter(function(c){return c.created<=iso(addDays(parse(k),6));}),cmm=cmk.filter(function(c){return cWeek(c,k)>=c.floor;}).length;
+    var ur=0;for(var i=0;i<7;i++){var dd=S.days[iso(addDays(parse(k),i))];if(dd&&dd.t===2)ur++;}
+    return'<tr><td class="n">'+esc(fmt(parse(k),{month:"short",day:"numeric"}))+'</td><td class="n">'+(w.her===null?"–":w.her+"/10")+'</td><td class="n">'+kept+' of '+made+(miss?' <span class="miss">('+miss+' missed)</span>':"")+'</td><td>'+(has(w.nn,"repair")?'<span class="kept">Yes</span>':"No")+'</td><td class="n">'+(cmk.length?cmm+' of '+cmk.length:"–")+'</td><td class="n">'+(ur?'<span class="miss">'+ur+'</span>':"0")+'</td><td>'+(has(w.nn,"review")?'<span class="kept">Yes</span>':"No")+'</td></tr>';
+  }).join("")+'</tbody></table>';
+}
+
+/* ---------- commitments ---------- */
+var THISWEEK=iso(monday(new Date()));
+function ensure(){if(!S.commits)S.commits=[];}
+function findC(id){return S.commits.filter(function(c){return c.id===id;})[0];}
+function weekDates(k){var a=[],d=parse(k);for(var i=0;i<7;i++)a.push(iso(addDays(d,i)));return a;}
+function cWeek(c,k){return weekDates(k).reduce(function(n,d){return n+((c.log&&c.log[d])||0);},0);}
+function cStreak(c){var k=iso(addDays(parse(THISWEEK),-7)),n=0;while(n<104&&cWeek(c,k)>=c.floor){n++;k=iso(addDays(parse(k),-7));}return n;}
+function bump(id,d){var c=findC(id);if(!c)return;if(!c.log)c.log={};var v=(c.log[today]||0)+d;if(v<0)v=0;if(v)c.log[today]=v;else delete c.log[today];save();renderCommits();}
+function renderCommits(){
+  ensure();
+  var act=S.commits.filter(function(c){return c.active;});
+  $("cList").innerHTML=act.length?act.map(function(c){
+    var w=cWeek(c,THISWEEK),t=(c.log&&c.log[today])||0,st=cStreak(c),pct=Math.min(100,100*w/c.floor);
+    return'<div class="cc"><div><b>'+esc(c.p)+'</b></div><p><span class="lbl">I will</span>'+esc(c.b)+'</p>'+(c.tr?'<p><span class="lbl">When</span>'+esc(c.tr)+'</p>':'')+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div><div class="crow"><span>This week '+w+' of '+c.floor+(w>=c.floor?' <span class="kept">minimum met</span>':'')+' · today '+t+' · '+st+(st===1?' week':' weeks')+' in a row</span><span style="display:flex;gap:6px"><button class="cdo" data-cl="'+c.id+'">+1 Done</button><button class="cgh" data-cu="'+c.id+'">Undo</button><button class="cgh" data-cr="'+c.id+'">Retire</button></span></div></div>';
+  }).join(""):'<p class="empty">No commitments yet. Add your first one below, as you said it to her, then define the behavior.</p>';
+  $("todayCommits").innerHTML=act.length?act.map(function(c){var t=(c.log&&c.log[today])||0,w=cWeek(c,THISWEEK);
+    return'<div class="trow"><span>'+esc(c.p)+'<small style="display:block;color:var(--muted);font-size:12px">'+w+' of '+c.floor+' this week · today '+t+'</small></span><button class="cdo" data-cl="'+c.id+'">+1 Done</button></div>';
+  }).join(""):'<p class="empty">Add commitments on the Commitments tab.</p>';
+  var met=act.filter(function(c){return cWeek(c,THISWEEK)>=c.floor;}).length;
+  $("cActive").textContent=act.length+"/3";$("cMet").textContent=met+"/"+act.length;
+  $("cFormWrap").hidden=act.length>=3;
+}
+function addCommit(){
+  ensure();var p=$("cPromise").value.trim(),b=$("cBeh").value.trim(),tr=$("cTrig").value.trim(),f=parseInt($("cFloor").value,10);
+  if(S.commits.filter(function(c){return c.active;}).length>=3){$("cMsg").textContent="Three active at most. Retire one first.";return;}
+  if(!p){$("cMsg").textContent="Write the promise as you said it.";return;}
+  if(!b){$("cMsg").textContent="Add the behavior someone could watch.";return;}
+  if(!(f>=1&&f<=14)){$("cMsg").textContent="Pick a weekly minimum from 1 to 14.";return;}
+  S.commits.push({id:"c"+Date.now(),p:p,b:b,tr:tr,floor:f,active:true,created:today,log:{}});
+  $("cPromise").value="";$("cBeh").value="";$("cTrig").value="";$("cFloor").value="3";$("cMsg").textContent="";save();renderCommits();renderHist();
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",function(e){
+  var t=e.target.closest("[data-tab]");
+  if(t){["chart","today","commits","week","rhythm"].forEach(function(n){$(n).hidden=n!==t.dataset.tab;$("t-"+n).setAttribute("aria-selected",String(n===t.dataset.tab));});return;}
+  if(e.target.id==="cAdd"){addCommit();return;}
+  var cl=e.target.closest("[data-cl]");if(cl){bump(cl.dataset.cl,1);return;}
+  var cu=e.target.closest("[data-cu]");if(cu){bump(cu.dataset.cu,-1);return;}
+  var cr=e.target.closest("[data-cr]");if(cr){var cc=findC(cr.dataset.cr);if(cc){cc.active=false;save();renderCommits();renderHist();}return;}
+  var tn=e.target.closest("[data-t]");
+  if(tn){var dd=day(today),tv=+tn.dataset.t;dd.t=(dd.t===tv)?undefined:tv;save();renderTension();renderHist();return;}
+  var h=e.target.closest("[data-h]");
+  if(h){var w=wk(weekKey),v=+h.dataset.h;w.her=(w.her===v)?null:v;save();renderWeek();return;}
+  if(e.target.id==="prevW"){weekKey=iso(addDays(parse(weekKey),-7));renderWeek();}
+  if(e.target.id==="nextW"){weekKey=iso(addDays(parse(weekKey),7));renderWeek();}
+});
+document.addEventListener("change",function(e){
+  var el=e.target;
+  if(el.dataset.d){toggle(day(today).c,el.dataset.d,el.checked);save();updateToday();}
+  else if(el.dataset.n){toggle(wk(weekKey).nn,el.dataset.n,el.checked);save();renderHist();}
+  else if(el.dataset.w){toggle(wk(weekKey).w,el.dataset.w,el.checked);save();}
+  else if(el.dataset.ps!==undefined){wk(weekKey).p[+el.dataset.ps].s=el.value;save();renderHist();}
+});
+document.addEventListener("input",function(e){
+  var el=e.target;
+  if(el.id==="note"){day(today).note=el.value;save();}
+  else if(el.dataset.pt!==undefined){wk(weekKey).p[+el.dataset.pt].t=el.value;save();}
+  else if(el.id==="helped"||el.id==="hurt"||el.id==="change"){wk(weekKey)[el.id]=el.value;save();}
+});
+
+/* ---------- boot ---------- */
+renderChart();
+var cached=lsGet();if(cached&&cached.days){S=cached;}
+ensure();renderCommits();renderToday();renderWeek();
+setSync("Saved on this device only");
+var sb=null,uid=null;
+function applyRemote(r){if(r&&r.days){S=r;lsSet();ensure();renderCommits();renderToday();renderWeek();}}
+function pull(){
+  if(!sb||!uid)return Promise.resolve();
+  return sb.from("harada_state").select("data").eq("user_id",uid).maybeSingle().then(function(res){
+    if(res.error)throw res.error;
+    if(res.data&&res.data.data)applyRemote(res.data.data);
+    else if(S&&S.days){return push();}
+  }).then(function(){setSync("Saved");}).catch(function(){setSync("Offline: saved on this device");});
+}
+function push(){
+  return sb.from("harada_state").upsert({user_id:uid,data:S,updated_at:new Date().toISOString()}).then(function(res){
+    if(res.error)throw res.error;setSync("Saved");
+  });
+}
+dbRef={set:function(){return push();}};
+function signedIn(session){
+  uid=session.user.id;mode="db";$("auth").hidden=true;
+  setSync("Syncing…");pull();
+}
+if(window.supabase&&window.HARADA_CONFIG&&HARADA_CONFIG.url&&HARADA_CONFIG.url.indexOf("YOUR_")<0){
+  sb=supabase.createClient(HARADA_CONFIG.url,HARADA_CONFIG.anonKey);
+  sb.auth.getSession().then(function(r){
+    if(r.data.session)signedIn(r.data.session);
+    else{$("auth").hidden=false;setSync("Not signed in: saved on this device");}
+  });
+  sb.auth.onAuthStateChange(function(ev,session){if(session&&!uid)signedIn(session);});
+  $("aSend").addEventListener("click",function(){
+    var em=$("aEmail").value.trim();if(!em){$("aMsg").textContent="Enter your email.";return;}
+    $("aMsg").textContent="Sending…";
+    sb.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.href.split("#")[0]}}).then(function(r){
+      $("aMsg").textContent=r.error?r.error.message:"Check your email for the link.";
+    });
+  });
+  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")pull();});
+}
+})();
+</script>
+
+</body></html>
